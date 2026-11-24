@@ -2,9 +2,11 @@
 import express from 'express'
 import helmet from 'helmet'
 import { rateLimit } from 'express-rate-limit'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const app = express()
-const PORT = 5000
+const PORT = process.env.PORT || 5000
 
 const API = (
   process.env.JUDGE0_API_URL ||
@@ -104,6 +106,18 @@ app.get('/api/health', (req, res) => {
 // Compiler execution API
 
 app.post('/api/run', async (req, res) => {
+
+  if (
+  process.env.NODE_ENV === 'production' &&
+  (
+    !process.env.JUDGE0_API_URL ||
+    !process.env.JUDGE0_API_KEY
+  )
+) {
+  return res.status(503).json({
+    error: 'Public compiler service is not configured yet.'
+  })
+}
 
   const {
     language,
@@ -299,16 +313,25 @@ app.use((err, req, res, next) => {
 
 // Start local server
 
-app.listen(PORT, '127.0.0.1', () => {
 
-  console.log('====================================')
-  console.log('     VYRON COMPILER BACKEND 2.2')
-  console.log('====================================')
-  console.log('Server running on port 5000')
-  console.log('Supported languages: 15')
-  console.log('Rate limiting: ENABLED')
-  console.log('Security headers: ENABLED')
-  console.log('Request protection: ENABLED')
-  console.log('====================================')
+const __dirname = path.dirname(
+  fileURLToPath(import.meta.url)
+)
 
-})
+app.use(
+  express.static(path.join(__dirname, 'dist'))
+)
+
+app.listen(
+  PORT,
+  process.env.NODE_ENV === 'production'
+    ? '0.0.0.0'
+    : '127.0.0.1',
+  () => {
+    console.log('================================')
+    console.log('VYRON COMPILER 2.2')
+    console.log(`Server running on port ${PORT}`)
+    console.log('================================')
+  }
+)
+
